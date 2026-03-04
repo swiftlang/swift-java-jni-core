@@ -28,7 +28,7 @@ jobs:
           fi
         elif command -v yum >/dev/null 2>&1 ; then # amazonlinux2, rhel-ubi9
           yum update -y
-          yum install -y corretto
+          yum install -y java-devel
         fi
 
       enable_android_sdk_build: true
