@@ -12,4 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-// Dummy file so that SwiftPM produces an object file
+
+#if canImport(Android)
+public typealias JNINativeInterface_ = JNINativeInterface
+#endif
+
+extension UnsafeMutablePointer<JNIEnv?> {
+  public var interface: JNINativeInterface_ { self.pointee!.pointee }
+}
