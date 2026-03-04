@@ -134,16 +134,16 @@ let package = Package(
     .library(
       name: "SwiftJavaJNICore",
       targets: ["SwiftJavaJNICore"]
-    ),
+    )
   ],
   targets: [
     .target(
       name: "CSwiftJavaJNI",
       cSettings: [
-        .unsafeFlags(["-I\(javaIncludePath)", "-I\(javaPlatformIncludePath)"], .when(platforms: [.macOS, .linux, .windows])),
+        .unsafeFlags(["-I\(javaIncludePath)", "-I\(javaPlatformIncludePath)"], .when(platforms: [.macOS, .linux, .windows]))
       ],
       swiftSettings: [
-        .unsafeFlags(["-I\(javaIncludePath)", "-I\(javaPlatformIncludePath)"], .when(platforms: [.macOS, .linux, .windows])),
+        .unsafeFlags(["-I\(javaIncludePath)", "-I\(javaPlatformIncludePath)"], .when(platforms: [.macOS, .linux, .windows]))
       ],
       linkerSettings: [
         .linkedLibrary("log", .when(platforms: [.android]))
@@ -153,7 +153,7 @@ let package = Package(
     .target(
       name: "SwiftJavaJNICore",
       dependencies: [
-        "CSwiftJavaJNI",
+        "CSwiftJavaJNI"
       ],
       swiftSettings: [
         .swiftLanguageMode(.v5),
