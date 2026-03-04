@@ -19,11 +19,16 @@ jobs:
       linux_exclude_swift_versions: "[{\"swift_version\": \"5.9\"}, {\"swift_version\": \"5.10\"}]"
       linux_pre_build_command: |
         if command -v apt-get >/dev/null 2>&1 ; then # bookworm, noble, jammy, focal
-          /usr/bin/sudo apt-get update -y
-          /usr/bin/sudo apt-get install -y default-jdk
+          if command -v sudo &> /dev/null && [ "$EUID" -ne 0 ]; then
+            sudo apt-get update -y
+            sudo apt-get install -y default-jdk
+          else
+            apt-get update -y
+            apt-get install -y default-jdk
+          fi
         elif command -v yum >/dev/null 2>&1 ; then # amazonlinux2, rhel-ubi9
-          /usr/bin/sudo yum update -y
-          /usr/bin/sudo yum install -y openjdk
+          yum update -y
+          yum install -y corretto
         fi
 
       enable_android_sdk_build: true
