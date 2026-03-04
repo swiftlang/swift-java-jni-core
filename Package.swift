@@ -119,6 +119,15 @@ func getJavaHomeFromPath() -> String? {
 
 let javaHome = findJavaHome()
 
+let javaIncludePath = "\(javaHome)/include"
+#if os(Linux)
+let javaPlatformIncludePath = "\(javaIncludePath)/linux"
+#elseif os(macOS)
+let javaPlatformIncludePath = "\(javaIncludePath)/darwin"
+#elseif os(Windows)
+let javaPlatformIncludePath = "\(javaIncludePath)/win32"
+#endif
+
 let package = Package(
   name: "swift-java-jni-core",
   products: [
@@ -130,6 +139,12 @@ let package = Package(
   targets: [
     .target(
       name: "CSwiftJavaJNI",
+      cSettings: [
+        .unsafeFlags(["-I\(javaIncludePath)", "-I\(javaPlatformIncludePath)"], .when(platforms: [.macOS, .linux, .windows])),
+      ],
+      swiftSettings: [
+        .unsafeFlags(["-I\(javaIncludePath)", "-I\(javaPlatformIncludePath)"], .when(platforms: [.macOS, .linux, .windows])),
+      ],
       linkerSettings: [
         .linkedLibrary("log", .when(platforms: [.android]))
       ]
@@ -142,6 +157,7 @@ let package = Package(
       ],
       swiftSettings: [
         .swiftLanguageMode(.v5),
+        .unsafeFlags(["-I\(javaIncludePath)", "-I\(javaPlatformIncludePath)"], .when(platforms: [.macOS, .linux, .windows])),
       ],
       linkerSettings: [
         .unsafeFlags(
@@ -171,7 +187,8 @@ let package = Package(
         "SwiftJavaJNICore"
       ],
       swiftSettings: [
-        .swiftLanguageMode(.v5)
+        .swiftLanguageMode(.v5),
+        .unsafeFlags(["-I\(javaIncludePath)", "-I\(javaPlatformIncludePath)"], .when(platforms: [.macOS, .linux, .windows])),
       ]
     ),
   ]
