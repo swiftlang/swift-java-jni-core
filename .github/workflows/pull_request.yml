@@ -29,9 +29,8 @@ jobs:
         elif command -v yum >/dev/null 2>&1 ; then # amazonlinux2, rhel-ubi9
           yum update -y
           yum install -y java-devel
-          echo "JAVA_HOME: $JAVA_HOME"
-          echo "which java: $(which java)"
-          echo "ls /usr/lib/jvm/: $(ls /usr/lib/jvm/)"
+          # else cannot find java and build crash
+          echo "/usr/lib/jvm/java" > "${HOME}"/.java_home
         fi
 
       enable_android_sdk_build: true
