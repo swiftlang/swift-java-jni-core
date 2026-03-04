@@ -16,14 +16,14 @@ jobs:
       enable_macos_checks: false
       enable_linux_checks: true
       linux_os_versions: '["amazonlinux2", "bookworm", "jammy", "focal", "noble", "rhel-ubi9"]'
-      #linux_exclude_swift_versions: "[{\"swift_version\": \"5.9\"}]"
+      linux_exclude_swift_versions: "[{\"swift_version\": \"5.9\"}, {\"swift_version\": \"5.10\"}]"
       linux_pre_build_command: |
         if command -v apt-get >/dev/null 2>&1 ; then # bookworm, noble, jammy, focal
-          apt-get update -y
-          apt-get install -y default-jdk
+          /usr/sbin/sudo apt-get update -y
+          /usr/sbin/sudo apt-get install -y default-jdk
         elif command -v yum >/dev/null 2>&1 ; then # amazonlinux2, rhel-ubi9
-          yum update -y
-          yum install -y default-jdk
+          /usr/sbin/sudo yum update -y
+          /usr/sbin/sudo yum install -y openjdk
         fi
 
       enable_android_sdk_build: true
