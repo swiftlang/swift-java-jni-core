@@ -1,0 +1,36 @@
+name: pull_request
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  soundness:
+    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@main
+    with:
+      api_breakage_check_enabled: false
+      format_check_enabled: true
+      license_header_check_project_name: Swift.org
+      docs_check_enabled: false
+
+  test-swift:
+    name: Test (Swift) (${{ matrix.os_version }} swift:${{ matrix.swift_version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        swift_version: ['6.1.3', '6.2', 'nightly']
+        os_version: ['jammy']
+    container:
+      image: ${{ (contains(matrix.swift_version, 'nightly') && 'swiftlang/swift') || 'swift' }}:${{ matrix.swift_version }}-${{ matrix.os_version }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare CI Environment
+        uses: ./.github/actions/prepare_env
+      - name: Swift Build
+        run: swift build
+      - name: Swift Test
+        run: swift test

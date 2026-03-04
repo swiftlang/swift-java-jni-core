@@ -1,0 +1,14 @@
+name: 'Swift Java JNI Core CI Env'
+description: 'Prepare the CI environment by installing Swift and JDK.'
+
+runs:
+  using: composite
+  steps:
+    - name: Check Swift version
+      shell: bash
+      run: swift -version
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'corretto'
+        java-version: '17'
