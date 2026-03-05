@@ -128,33 +128,39 @@ let javaPlatformIncludePath = "\(javaIncludePath)/win32"
 #endif
 
 let package = Package(
-    name: "linkage-test",
-    dependencies: [
-        .package(name: "swift-java-jni-core", path: "../..")
-    ],
-    targets: [
-        .executableTarget(
-            name: "LinkageTest",
-            dependencies: [
-                .product(name: "SwiftJavaJNICore", package: "swift-java-jni-core")
-            ],
-            swiftSettings: [
-                .unsafeFlags(["-I\(javaIncludePath)", "-I\(javaPlatformIncludePath)"])
-            ],
-            linkerSettings: [
-                .unsafeFlags([
-                    "-L\(javaHome)/lib/server",
-                    "-Xlinker", "-rpath",
-                    "-Xlinker", "\(javaHome)/lib/server",
-                ], .when(platforms: [.linux, .macOS])),
-                .unsafeFlags([
-                    "-L\(javaHome)/lib"
-                ], .when(platforms: [.windows])),
-                .linkedLibrary(
-                    "jvm",
-                    .when(platforms: [.linux, .macOS, .windows])
-                ),
-            ]
-        )
-    ]
+  name: "linkage-test",
+  dependencies: [
+    .package(name: "swift-java-jni-core", path: "../..")
+  ],
+  targets: [
+    .executableTarget(
+      name: "LinkageTest",
+      dependencies: [
+        .product(name: "SwiftJavaJNICore", package: "swift-java-jni-core")
+      ],
+      swiftSettings: [
+        .unsafeFlags(["-I\(javaIncludePath)", "-I\(javaPlatformIncludePath)"])
+      ],
+      linkerSettings: [
+        .unsafeFlags(
+          [
+            "-L\(javaHome)/lib/server",
+            "-Xlinker", "-rpath",
+            "-Xlinker", "\(javaHome)/lib/server",
+          ],
+          .when(platforms: [.linux, .macOS])
+        ),
+        .unsafeFlags(
+          [
+            "-L\(javaHome)/lib"
+          ],
+          .when(platforms: [.windows])
+        ),
+        .linkedLibrary(
+          "jvm",
+          .when(platforms: [.linux, .macOS, .windows])
+        ),
+      ]
+    )
+  ]
 )

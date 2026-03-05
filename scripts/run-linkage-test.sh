@@ -30,7 +30,7 @@ swift build --package-path Tests/LinkageTest
 
 # Construct build path
 build_path=$(swift build --package-path Tests/LinkageTest --show-bin-path)
-binary_path=$build_path/linkageTest
+binary_path="$build_path/LinkageTest"
 
 # Verify the binary exists
 if [[ ! -f "$binary_path" ]]; then
