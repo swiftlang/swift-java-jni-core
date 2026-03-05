@@ -46,3 +46,5 @@ jobs:
         uses: ./.github/actions/prepare_env
       - name: Run linkage test
         run: ./scripts/run-linkage-test.sh
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME }}

@@ -20,6 +20,8 @@ if [[ "$(uname -s)" != "Linux" ]]; then
     exit 1
 fi
 
+echo "Detected JAVA_HOME=${JAVA_HOME}"
+
 echo "Running on Linux - proceeding with linkage test..."
 
 # Build the linkage test package
