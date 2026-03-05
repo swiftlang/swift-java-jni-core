@@ -18,7 +18,7 @@ jobs:
       enable_macos_checks: false
       enable_ios_checks: false
       enable_linux_checks: true
-      linux_os_versions: '["amazonlinux2", "bookworm", "jammy", "noble", "rhel-ubi9"]'
+      linux_os_versions: '["bookworm", "jammy", "noble", "rhel-ubi9"]'
       linux_exclude_swift_versions: "[{\"swift_version\": \"5.9\"}, {\"swift_version\": \"5.10\"}]"
       linux_pre_build_command: |
         if command -v apt-get >/dev/null 2>&1 ; then # bookworm, noble, jammy
@@ -30,14 +30,9 @@ jobs:
             apt-get install -y default-jdk
           fi
         elif command -v yum >/dev/null 2>&1 ; then # amazonlinux2, rhel-ubi9
+          # TODO: amazonlinux2 needs more help finding JAVA_HOME
           yum update -y
           yum install -y java-devel
-          echo "JAVA_HOME: $JAVA_HOME"
-          echo "which java: $(which java)"
-          echo "ls /usr/lib/jvm/: $(ls /usr/lib/jvm/)"
-          ls "/usr/lib/jvm/java/"
-          # needed for amazonlinux2 or else cannot find java and build crash
-          echo "/usr/lib/jvm/java" > "${HOME}"/.java_home
         fi
 
       enable_android_sdk_build: true
