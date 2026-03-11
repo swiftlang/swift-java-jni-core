@@ -37,15 +37,12 @@ typealias JNIEnvPointer = UnsafeMutablePointer<JNIEnv?>
 extension FileManager {
   #if os(Windows)
   static let pathSeparator = ";"
-  #else
-  static let pathSeparator = ":"
-  #endif
-
-  #if os(Windows)
   static let libraryExtension = "dll"
   #elseif canImport(Darwin)
+  static let pathSeparator = ":"
   static let libraryExtension = "dylib"
   #else
+  static let pathSeparator = ":"
   static let libraryExtension = "so"
   #endif
 }
@@ -407,17 +404,19 @@ extension JavaVirtualMachine {
   }
 }
 
+// ==== ------------------------------------------------------------------------
+// MARK: Utilities for loading libjvm and JNI entry point symbols.
+
 #if os(Windows)
 private typealias DylibType = HMODULE
 
-private func symbol<T>(_ handle: DylibType?, _ name: String) -> T? {
-  guard let handle = handle, let result = GetProcAddress(handle, name) else {
-    return nil
-  }
-  return unsafeBitCast(result, to: T.self)
+/// Forward `dlsym` to Windows' `GetProcAddress`
+private func dlsym(_ handle: DylibType?, _ name: String) -> DylibType? {
+  GetProcAddress(handle, name)
 }
 #else
 private typealias DylibType = UnsafeMutableRawPointer
+#endif
 
 private func symbol<T>(_ handle: DylibType?, _ name: String) -> T? {
   guard let handle = handle, let result = dlsym(handle, name) else {
@@ -425,7 +424,6 @@ private func symbol<T>(_ handle: DylibType?, _ name: String) -> T? {
   }
   return unsafeBitCast(result, to: T.self)
 }
-#endif
 
 /// Located the shared library that includes the `JNI_GetCreatedJavaVMs` and `JNI_CreateJavaVM` entry points to the `JNINativeInterface` function table
 private func loadLibJava() throws -> DylibType {
@@ -458,6 +456,7 @@ private func loadLibJava() throws -> DylibType {
 
   let ext = FileManager.libraryExtension
   let libjvmPaths = [
+    // look through some standard locations relative to JAVA_HOME
     URL(fileURLWithPath: "jre/lib/server/libjvm.\(ext)", relativeTo: javaHomeURL),
     URL(fileURLWithPath: "lib/server/libjvm.\(ext)", relativeTo: javaHomeURL),
     URL(fileURLWithPath: "lib/libjvm.\(ext)", relativeTo: javaHomeURL),
@@ -473,14 +472,14 @@ private func loadLibJava() throws -> DylibType {
   }
 
   #if os(Windows)
-  guard let dylib = LoadLibraryA(libjvmPath.path) else {
-    throw JavaVirtualMachine.VMError.libjvmNotLoaded
-  }
+  let dylib = LoadLibraryA(libjvmPath.path)
   #else
-  guard let dylib = dlopen(libjvmPath.path, RTLD_NOW) else {
-    throw JavaVirtualMachine.VMError.libjvmNotLoaded
-  }
+  let dylib = dlopen(libjvmPath.path, RTLD_NOW)
   #endif
+
+  guard let dylib else {
+   throw JavaVirtualMachine.VMError.libjvmNotLoaded
+  }
 
   return dylib
 }
