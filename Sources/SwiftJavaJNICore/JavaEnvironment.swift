@@ -12,11 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
-#if canImport(Android)
-public typealias JNINativeInterface_ = JNINativeInterface
-#endif
-
 extension UnsafeMutablePointer<JNIEnv?> {
-  public var interface: JNINativeInterface_ { self.pointee!.pointee }
+  public var interface: JNINativeInterface { self.pointee!.pointee }
 }
