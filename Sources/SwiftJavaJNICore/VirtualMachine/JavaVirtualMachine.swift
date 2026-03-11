@@ -410,20 +410,22 @@ extension JavaVirtualMachine {
 #if os(Windows)
 private typealias DylibType = HMODULE
 
-/// Forward `dlsym` to Windows' `GetProcAddress`
-private func dlsym(_ handle: DylibType?, _ name: String) -> DylibType? {
-  GetProcAddress(handle, name)
-}
-#else
-private typealias DylibType = UnsafeMutableRawPointer
-#endif
-
-private func symbol<T>(_ handle: DylibType?, _ name: String) -> T? {
-  guard let handle = handle, let result = dlsym(handle, name) else {
+private func symbol<T>(_ handle: DylibType, _ name: String) -> T? {
+  guard let result = GetProcAddress(handle, name) else {
     return nil
   }
   return unsafeBitCast(result, to: T.self)
 }
+#else
+private typealias DylibType = UnsafeMutableRawPointer
+
+private func symbol<T>(_ handle: DylibType, _ name: String) -> T? {
+  guard let result = dlsym(handle, name) else {
+    return nil
+  }
+  return unsafeBitCast(result, to: T.self)
+}
+#endif
 
 /// Located the shared library that includes the `JNI_GetCreatedJavaVMs` and `JNI_CreateJavaVM` entry points to the `JNINativeInterface` function table
 private func loadLibJava() throws -> DylibType {
@@ -478,7 +480,7 @@ private func loadLibJava() throws -> DylibType {
   #endif
 
   guard let dylib else {
-   throw JavaVirtualMachine.VMError.libjvmNotLoaded
+    throw JavaVirtualMachine.VMError.libjvmNotLoaded
   }
 
   return dylib
