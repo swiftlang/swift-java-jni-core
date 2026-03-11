@@ -371,8 +371,9 @@ extension JavaVirtualMachine {
 
     guard
       let libjvmPath = libjvmPaths.first(where: {
-      FileManager.default.isReadableFile(atPath: $0.path)
-    }) else {
+        FileManager.default.isReadableFile(atPath: $0.path)
+      })
+    else {
       throw VMError.libjvmNotFound
     }
 

@@ -18,7 +18,7 @@ jobs:
       enable_macos_checks: false
       enable_ios_checks: false
       enable_linux_checks: true
-      linux_os_versions: '["bookworm", "jammy", "noble", "rhel-ubi9"]'
+      linux_os_versions: '["amazonlinux2", "bookworm", "jammy", "noble", "jammy", "rhel-ubi9"]'
       linux_exclude_swift_versions: "[{\"swift_version\": \"5.9\"}, {\"swift_version\": \"5.10\"}]"
       linux_pre_build_command: |
         if command -v apt-get >/dev/null 2>&1 ; then # bookworm, noble, jammy
