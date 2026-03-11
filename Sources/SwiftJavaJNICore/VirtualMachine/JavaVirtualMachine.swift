@@ -342,17 +342,20 @@ extension JavaVirtualMachine {
     }
     #endif
 
-    guard let javaHome = ProcessInfo.processInfo.environment["JAVA_HOME"] ?? {
-      // if JAVA_HOME is unset, look in some standard locations
-      [
-        "/opt/homebrew/opt/java", // macOS Homebrew
-        "/usr/local/opt/java",
-        "/usr/lib/jvm/default-java", // Ubuntu/Debian
-        "/usr/lib/jvm/default", // Arch
-      ].first(where: {
-        FileManager.default.fileExists(atPath: $0)
-      })
-    }() else {
+    guard
+      let javaHome = ProcessInfo.processInfo.environment["JAVA_HOME"]
+        ?? {
+          // if JAVA_HOME is unset, look in some standard locations
+          [
+            "/opt/homebrew/opt/java", // macOS Homebrew
+            "/usr/local/opt/java",
+            "/usr/lib/jvm/default-java", // Ubuntu/Debian
+            "/usr/lib/jvm/default", // Arch
+          ].first(where: {
+            FileManager.default.fileExists(atPath: $0)
+          })
+        }()
+    else {
       throw VMError.javaHomeNotFound
     }
 
@@ -366,7 +369,8 @@ extension JavaVirtualMachine {
       URL(fileURLWithPath: "libexec/openjdk.jdk/Contents/Home/lib/server/libjvm.\(ext)", relativeTo: javaHomeURL),
     ]
 
-    guard let libjvmPath = libjvmPaths.first(where: {
+    guard
+      let libjvmPath = libjvmPaths.first(where: {
       FileManager.default.isReadableFile(atPath: $0.path)
     }) else {
       throw VMError.libjvmNotFound

@@ -354,7 +354,7 @@ extension UInt64: JavaValue {
 
   public func getJNIValue(in environment: JNIEnvironment) -> JNIType {
     // `jlong` is always 64-bit, no matter the system pointer size.
-    return Int64(bitPattern: self)
+    Int64(bitPattern: self)
   }
 
   public init(fromJNI value: JNIType, in environment: JNIEnvironment) {
