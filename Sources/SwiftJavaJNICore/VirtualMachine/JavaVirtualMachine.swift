@@ -20,6 +20,9 @@ import Foundation
 
 #if canImport(Android)
 import Android
+#elseif os(Windows)
+import ucrt
+import WinSDK
 #elseif canImport(Glibc)
 import Glibc
 #elseif canImport(Musl)

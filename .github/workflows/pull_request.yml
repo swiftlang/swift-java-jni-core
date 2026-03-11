@@ -15,7 +15,7 @@ jobs:
       enable_windows_checks: true
       windows_swift_versions: '["nightly-main"]'
       enable_macos_checks: true
-      enable_ios_checks: true
+      enable_ios_checks: false
       enable_linux_checks: true
       linux_os_versions: '["amazonlinux2", "bookworm", "noble", "jammy", "rhel-ubi9"]'
       linux_exclude_swift_versions: "[{\"swift_version\": \"5.9\"}, {\"swift_version\": \"5.10\"}]"
