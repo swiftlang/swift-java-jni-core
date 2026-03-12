@@ -446,6 +446,7 @@ private func loadLibJava() throws -> DylibType {
           "/usr/local/opt/java",
           "/usr/lib/jvm/default-java", // Ubuntu/Debian
           "/usr/lib/jvm/default", // Arch
+          "/usr/lib/jvm/java", // rhel-ubi9, amazonlinux2
         ].first(where: {
           FileManager.default.fileExists(atPath: $0)
         })

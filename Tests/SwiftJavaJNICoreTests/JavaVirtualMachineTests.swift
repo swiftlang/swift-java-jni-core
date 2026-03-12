@@ -18,9 +18,18 @@ import Testing
 @Suite
 struct JavaVirtualMachineTests {
 
-  @Test
+  static var isSupportedPlatform: Bool {
+    #if os(Android)
+    // Android tests are not currently run within an .apk and so do not have any ambient JVM
+    return false
+    #else
+    return true
+    #endif
+  }
+
+  @Test(.enabled(if: isSupportedPlatform))
   func loadJVMAndCallMethod() throws {
-    // Create a shared JVM instance
+    // Load or create a shared JVM instance
     let jvm = try JavaVirtualMachine.shared()
 
     // Get the JNI environment for the current thread
@@ -32,13 +41,19 @@ struct JavaVirtualMachineTests {
 
     // Look up the static method currentTimeMillis()J
     let methodID = env.interface.GetStaticMethodID(
-      env, systemClass, "currentTimeMillis", "()J"
+      env,
+      systemClass,
+      "currentTimeMillis",
+      "()J"
     )
     #expect(methodID != nil, "Failed to find System.currentTimeMillis")
 
     // Call System.currentTimeMillis() — returns jlong
     let timeMillis = env.interface.CallStaticLongMethodA(
-      env, systemClass, methodID, nil
+      env,
+      systemClass,
+      methodID,
+      nil
     )
     #expect(timeMillis > 0, "Expected a positive timestamp, got \(timeMillis)")
   }
