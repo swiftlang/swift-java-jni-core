@@ -15,6 +15,7 @@ jobs:
       enable_windows_checks: true
       windows_swift_versions: '["nightly-main"]'
       enable_macos_checks: true
+      macos_pre_build_command: brew install openjdk
       enable_ios_checks: false
       enable_linux_checks: true
       linux_os_versions: '["amazonlinux2", "bookworm", "noble", "jammy", "rhel-ubi9"]'
