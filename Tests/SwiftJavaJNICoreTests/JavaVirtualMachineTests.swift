@@ -16,17 +16,25 @@ import Testing
 
 @testable import SwiftJavaJNICore
 
+#if canImport(FoundationEssentials)
+import class FoundationEssentials.ProcessInfo
+#else
+import class Foundation.ProcessInfo
+#endif
 @Suite
 struct JavaVirtualMachineTests {
 
   static var isSupportedPlatform: Bool {
     #if os(Android)
-    // Android tests are not currently run within an .apk and so do not have any ambient JVM
-    return false
+    // Android tests are not currently run within an .apk and so do not have any ambient JVM.
+    // This can be overridden for a test harness that supports running within an .apk, like:
+    // skip android test --apk --env SWIFT_JAVA_JNI_TEST_JVM=1
+    let testSentinel = "0"
     #else
-    // disable test when we cannot find a system Java
-    return systemJavaHome() != nil
+    // tests for every other platform should be run in an environment with Java available unless explicitly disabled
+    let testSentinel = "1"
     #endif
+    return (ProcessInfo.processInfo.environment["SWIFT_JAVA_JNI_TEST_JVM"] ?? testSentinel) != "0"
   }
 
   @Test(.enabled(if: isSupportedPlatform))
