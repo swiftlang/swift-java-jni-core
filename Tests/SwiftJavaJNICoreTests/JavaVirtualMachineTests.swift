@@ -13,14 +13,14 @@
 //===----------------------------------------------------------------------===//
 
 import Testing
+
+@testable import SwiftJavaJNICore
+
 #if canImport(FoundationEssentials)
 import class FoundationEssentials.ProcessInfo
 #else
 import class Foundation.ProcessInfo
 #endif
-
-@testable import SwiftJavaJNICore
-
 @Suite
 struct JavaVirtualMachineTests {
 
