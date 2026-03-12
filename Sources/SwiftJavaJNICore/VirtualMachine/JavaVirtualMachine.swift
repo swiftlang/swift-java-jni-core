@@ -427,6 +427,42 @@ private func symbol<T>(_ handle: DylibType, _ name: String) -> T? {
 }
 #endif
 
+/// The Java installation folder for the system, found either with `JAVA_HOME` environment or by checking standard locations
+func systemJavaHome() -> String? {
+  // always defer to JAVA_HOME when it is set in the environment
+  if let javaHome = ProcessInfo.processInfo.environment["JAVA_HOME"] {
+    return javaHome
+  }
+
+  // if JAVA_HOME is unset, hunt around some standard locations
+  var defaultJavaPaths: [String] = []
+
+  #if os(macOS)
+  #if arch(x86_64)
+  defaultJavaPaths += ["/usr/local/opt/java"] // macOS Homebrew x86
+  #else
+  defaultJavaPaths += ["/opt/homebrew/opt/java"] // macOS Homebrew
+  #endif
+  defaultJavaPaths += ["/System/Library/Frameworks/JavaVM.framework/Home"] // macOS legacy path
+  #endif
+
+  #if os(Linux)
+  defaultJavaPaths += [
+    "/usr/lib/jvm/default-java", // Ubuntu/Debian
+    "/usr/lib/jvm/default", // Arch
+    "/usr/lib/jvm/java", // rhel-ubi9, amazonlinux2
+  ]
+  #endif
+
+  if let javaHome = defaultJavaPaths.first(where: {
+    FileManager.default.fileExists(atPath: $0)
+  }) {
+    return javaHome
+  }
+
+  return nil
+}
+
 /// Located the shared library that includes the `JNI_GetCreatedJavaVMs` and `JNI_CreateJavaVM` entry points to the `JNINativeInterface` function table
 private func loadLibJava() throws -> DylibType {
   #if os(Android)
@@ -437,20 +473,7 @@ private func loadLibJava() throws -> DylibType {
   }
   #endif
 
-  guard
-    let javaHome = ProcessInfo.processInfo.environment["JAVA_HOME"]
-      ?? {
-        // if JAVA_HOME is unset, look in some standard locations
-        [
-          "/opt/homebrew/opt/java", // macOS Homebrew
-          "/usr/local/opt/java",
-          "/usr/lib/jvm/default-java", // Ubuntu/Debian
-          "/usr/lib/jvm/default", // Arch
-        ].first(where: {
-          FileManager.default.fileExists(atPath: $0)
-        })
-      }()
-  else {
+  guard let javaHome = systemJavaHome() else {
     throw JavaVirtualMachine.VMError.javaHomeNotFound
   }
 
