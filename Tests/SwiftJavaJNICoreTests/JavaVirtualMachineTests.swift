@@ -12,8 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import SwiftJavaJNICore
 import Testing
+
+@testable import SwiftJavaJNICore
 
 @Suite
 struct JavaVirtualMachineTests {
