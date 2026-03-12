@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import SwiftJavaJNICore
 import Testing
+@testable import SwiftJavaJNICore
 
 @Suite
 struct JavaVirtualMachineTests {
@@ -23,7 +23,8 @@ struct JavaVirtualMachineTests {
     // Android tests are not currently run within an .apk and so do not have any ambient JVM
     return false
     #else
-    return true
+    // disable test when we cannot find a system Java
+    return systemJavaHome() != nil
     #endif
   }
 
