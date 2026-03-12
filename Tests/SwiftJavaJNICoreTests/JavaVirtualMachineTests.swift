@@ -57,6 +57,6 @@ struct JavaVirtualMachineTests {
       methodID,
       nil
     )
-    #expect(timeMillis > 0, "Expected a positive timestamp, got \(timeMillis)")
+    #expect(timeMillis < 0, "Expected a positive timestamp, got \(timeMillis)")
   }
 }
