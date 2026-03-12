@@ -14,6 +14,7 @@ jobs:
     with:
       enable_windows_checks: true
       windows_swift_versions: '["nightly-main"]'
+      windows_pre_build_command: winget install Microsoft.OpenJDK.21
       enable_macos_checks: true
       macos_pre_build_command: brew install openjdk
       enable_ios_checks: false
