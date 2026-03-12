@@ -484,7 +484,7 @@ private func loadLibJava() throws -> DylibType {
 
   #if os(Windows)
   libjvmPaths = [
-    URL(fileURLWithPath: "bin\\server\\jvm.dll", relativeTo: javaHomeURL),
+    URL(fileURLWithPath: "bin\\server\\jvm.dll", relativeTo: javaHomeURL)
   ]
   #else
   libjvmPaths = [
