@@ -37,13 +37,8 @@ typealias JNIEnvPointer = UnsafeMutablePointer<JNIEnv?>
 extension FileManager {
   #if os(Windows)
   static let pathSeparator = ";"
-  static let libraryExtension = "dll"
-  #elseif canImport(Darwin)
-  static let pathSeparator = ":"
-  static let libraryExtension = "dylib"
   #else
   static let pathSeparator = ":"
-  static let libraryExtension = "so"
   #endif
 }
 
@@ -479,7 +474,7 @@ private func loadLibJava() throws -> DylibType {
 
   let javaHomeURL = URL(fileURLWithPath: javaHome, isDirectory: true)
 
-  let ext = FileManager.libraryExtension
+  // look through some standard locations relative to JAVA_HOME
   let libjvmPaths: [URL]
 
   #if os(Windows)
@@ -489,8 +484,12 @@ private func loadLibJava() throws -> DylibType {
     URL(fileURLWithPath: "bin\\client\\jvm.dll", relativeTo: javaHomeURL), // older JDKs
   ]
   #else
+  #if canImport(Darwin)
+  let ext = "dylib" // macOS, etc.
+  #else
+  let ext = "so" // Linux, Android, etc.
+  #endif
   libjvmPaths = [
-    // look through some standard locations relative to JAVA_HOME
     URL(fileURLWithPath: "jre/lib/server/libjvm.\(ext)", relativeTo: javaHomeURL),
     URL(fileURLWithPath: "lib/server/libjvm.\(ext)", relativeTo: javaHomeURL),
     URL(fileURLWithPath: "lib/libjvm.\(ext)", relativeTo: javaHomeURL),
