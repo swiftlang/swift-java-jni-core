@@ -26,8 +26,8 @@ struct JavaVirtualMachineTests {
 
   static var isSupportedPlatform: Bool {
     #if os(Android)
-    // Android tests are not currently run within an .apk and so do not have any ambient JVM
-    // This can be overridden for a test hadness harness that supports running within an .apk, like:
+    // Android tests are not currently run within an .apk and so do not have any ambient JVM.
+    // This can be overridden for a test harness that supports running within an .apk, like:
     // skip android test --apk --env SWIFT_JAVA_JNI_TEST_JVM=1
     let testSentinel = "0"
     #else
