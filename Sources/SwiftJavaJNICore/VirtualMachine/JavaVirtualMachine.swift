@@ -480,13 +480,21 @@ private func loadLibJava() throws -> DylibType {
   let javaHomeURL = URL(fileURLWithPath: javaHome, isDirectory: true)
 
   let ext = FileManager.libraryExtension
-  let libjvmPaths = [
+  let libjvmPaths: [URL]
+
+  #if os(Windows)
+  libjvmPaths = [
+    URL(fileURLWithPath: "bin\\server\\jvm.dll", relativeTo: javaHomeURL),
+  ]
+  #else
+  libjvmPaths = [
     // look through some standard locations relative to JAVA_HOME
     URL(fileURLWithPath: "jre/lib/server/libjvm.\(ext)", relativeTo: javaHomeURL),
     URL(fileURLWithPath: "lib/server/libjvm.\(ext)", relativeTo: javaHomeURL),
     URL(fileURLWithPath: "lib/libjvm.\(ext)", relativeTo: javaHomeURL),
     URL(fileURLWithPath: "libexec/openjdk.jdk/Contents/Home/lib/server/libjvm.\(ext)", relativeTo: javaHomeURL),
   ]
+  #endif
 
   guard
     let libjvmPath = libjvmPaths.first(where: {
