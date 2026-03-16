@@ -12,13 +12,52 @@ jobs:
     name: Test
     uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@main
     with:
-      # TODO: need to pre-install Java
-      enable_windows_checks: false
-      # TODO: need to pre-install Java
-      enable_macos_checks: false
+      enable_windows_checks: true
+      windows_swift_versions: '["nightly-main"]'
+      windows_pre_build_command: |
+        $jdkVersion = "21"
+        $msiUrl = "https://aka.ms/download-jdk/microsoft-jdk-$jdkVersion-windows-x64.msi"
+        $installerPath = "$env:TEMP\microsoft-jdk-$jdkVersion.msi"
+        $jdkInstallDir = "C:\Program Files\Microsoft\jdk-$jdkVersion"
+
+        # Download the MSI
+        Write-Host "Downloading Microsoft OpenJDK $jdkVersion..."
+        Invoke-WebRequest -Uri $msiUrl -OutFile $installerPath
+
+        # Install silently
+        Write-Host "Installing Microsoft OpenJDK $jdkVersion..."
+        Start-Process msiexec.exe -ArgumentList "/i `"$installerPath`" /quiet /norestart INSTALLDIR=`"$jdkInstallDir`"" -Wait -NoNewWindow
+
+        # Set JAVA_HOME (system-wide, requires admin)
+        Write-Host "Setting JAVA_HOME..."
+        [System.Environment]::SetEnvironmentVariable("JAVA_HOME", $jdkInstallDir, [System.EnvironmentVariableTarget]::Machine)
+
+        # Add to system PATH if not already present
+        $currentPath = [System.Environment]::GetEnvironmentVariable("PATH", [System.EnvironmentVariableTarget]::Machine)
+        if ($currentPath -notlike "*$jdkInstallDir\bin*") {
+            [System.Environment]::SetEnvironmentVariable("PATH", "$currentPath;$jdkInstallDir\bin", [System.EnvironmentVariableTarget]::Machine)
+            Write-Host "Added JDK bin to system PATH."
+        }
+
+        # Refresh current session
+        $env:JAVA_HOME = $jdkInstallDir
+        $env:PATH = "$env:PATH;$jdkInstallDir\bin"
+
+        # Verify
+        Write-Host "`nVerifying installation..."
+        & "$jdkInstallDir\bin\java.exe" -version
+
+        Write-Host "`nDone! JAVA_HOME = $env:JAVA_HOME"
+
+        # Clean up installer
+        Remove-Item $installerPath -Force
+
+        Get-ChildItem Env:
+      enable_macos_checks: true
+      macos_pre_build_command: brew install openjdk
       enable_ios_checks: false
       enable_linux_checks: true
-      linux_os_versions: '["bookworm", "jammy", "noble", "rhel-ubi9"]'
+      linux_os_versions: '["amazonlinux2", "bookworm", "noble", "jammy", "rhel-ubi9"]'
       linux_exclude_swift_versions: "[{\"swift_version\": \"5.9\"}, {\"swift_version\": \"5.10\"}]"
       linux_pre_build_command: |
         if command -v apt-get >/dev/null 2>&1 ; then # bookworm, noble, jammy
@@ -30,11 +69,9 @@ jobs:
             apt-get install -y default-jdk
           fi
         elif command -v yum >/dev/null 2>&1 ; then # amazonlinux2, rhel-ubi9
-          # TODO: amazonlinux2 needs more help finding JAVA_HOME
           yum update -y
           yum install -y java-devel
         fi
-
       enable_android_sdk_build: true
       enable_android_sdk_checks: true
   soundness:

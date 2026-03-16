@@ -18,12 +18,21 @@ import FoundationEssentials
 import Foundation
 #endif
 
-public typealias JavaVMPointer = UnsafeMutablePointer<JavaVM?>
 #if canImport(Android)
-typealias JNIEnvPointer = UnsafeMutablePointer<JNIEnv?>
-#else
-typealias JNIEnvPointer = UnsafeMutableRawPointer
+import Android
+#elseif os(Windows)
+import ucrt
+import WinSDK
+#elseif canImport(Glibc)
+import Glibc
+#elseif canImport(Musl)
+import Musl
+#elseif canImport(Darwin)
+import Darwin
 #endif
+
+public typealias JavaVMPointer = UnsafeMutablePointer<JavaVM?>
+typealias JNIEnvPointer = UnsafeMutablePointer<JNIEnv?>
 
 extension FileManager {
   #if os(Windows)
@@ -118,8 +127,13 @@ public final class JavaVirtualMachine: @unchecked Sendable {
     vmArgs.options = optionsBuffer.baseAddress
     vmArgs.nOptions = jint(optionsBuffer.count)
 
+    typealias CreateJavaVM = @convention(c) (_ pvm: UnsafeMutablePointer<JavaVMPointer?>?, _ penv: UnsafeMutablePointer<JNIEnvPointer?>?, _ args: UnsafeMutableRawPointer) -> jint
+    guard let createJavaVM: CreateJavaVM = symbol(try loadLibJava(), "JNI_CreateJavaVM") else {
+      throw VMError.cannotLoadCreateJavaVM
+    }
+
     // Create the JVM instance.
-    if let createError = VMError(fromJNIError: JNI_CreateJavaVM(&jvm, &environment, &vmArgs)) {
+    if let createError = VMError(fromJNIError: createJavaVM(&jvm, &environment, &vmArgs)) {
       throw createError
     }
 
@@ -176,11 +190,7 @@ extension JavaVirtualMachine {
       return environment.assumingMemoryBound(to: JNIEnv?.self)
     }
 
-    #if canImport(Android)
     var jniEnv = environment?.assumingMemoryBound(to: JNIEnv?.self)
-    #else
-    var jniEnv = environment
-    #endif
 
     // Attach the current thread to the JVM.
     let attachResult: jint
@@ -198,11 +208,7 @@ extension JavaVirtualMachine {
 
     JavaVirtualMachine.destroyTLS.set(jniEnv!)
 
-    #if canImport(Android)
     return jniEnv!
-    #else
-    return jniEnv!.assumingMemoryBound(to: JNIEnv?.self)
-    #endif
   }
 
   /// Detach the current thread from the Java Virtual Machine. All Java
@@ -273,14 +279,19 @@ extension JavaVirtualMachine {
         }
       }
 
+      typealias GetCreatedJavaVMs = @convention(c) (_ pvm: UnsafeMutablePointer<JavaVMPointer?>, _ count: Int32, _ num: UnsafeMutablePointer<Int32>) -> jint
+      guard let getCreatedJavaVMs: GetCreatedJavaVMs = symbol(try loadLibJava(), "JNI_GetCreatedJavaVMs") else {
+        throw VMError.cannotLoadGetCreatedJavaVMs
+      }
+
       while true {
         var wasExistingVM: Bool = false
         while true {
           // Query the JVM itself to determine whether there is a JVM
           // instance that we don't yet know about.
-          var jvm: UnsafeMutablePointer<JavaVM?>? = nil
+          var jvm: JavaVMPointer? = nil
           var numJVMs: jsize = 0
-          if JNI_GetCreatedJavaVMs(&jvm, 1, &numJVMs) == JNI_OK, numJVMs >= 1 {
+          if getCreatedJavaVMs(&jvm, 1, &numJVMs) == JNI_OK, numJVMs >= 1 {
             // Adopt this JVM into a new instance of the JavaVirtualMachine
             // wrapper.
             let javaVirtualMachine = JavaVirtualMachine(adoptingJVM: jvm!)
@@ -352,6 +363,21 @@ extension JavaVirtualMachine {
     /// Invalid arguments.
     case invalidArguments
 
+    /// Cannot locate a `JAVA_HOME`
+    case javaHomeNotFound
+
+    /// Cannot find `libjvm`
+    case libjvmNotFound
+
+    /// Cannot `dlopen` `libjvm`
+    case libjvmNotLoaded
+
+    /// Cannot load `JNI_GetCreatedJavaVMs` from `libjvm`
+    case cannotLoadGetCreatedJavaVMs
+
+    /// Cannot load `JNI_CreateJavaVM` from `libjvm`
+    case cannotLoadCreateJavaVM
+
     /// Unknown JNI error.
     case unknown(jint, file: String, line: UInt)
 
@@ -371,4 +397,123 @@ extension JavaVirtualMachine {
   enum JavaKitError: Error {
     case classpathEntryNotFound(entry: String, classpath: [String])
   }
+}
+
+// ==== ------------------------------------------------------------------------
+// MARK: Utilities for loading libjvm and JNI entry point symbols.
+
+#if os(Windows)
+private typealias DylibType = HMODULE
+
+private func symbol<T>(_ handle: DylibType, _ name: String) -> T? {
+  guard let result = GetProcAddress(handle, name) else {
+    return nil
+  }
+  return unsafeBitCast(result, to: T.self)
+}
+#else
+private typealias DylibType = UnsafeMutableRawPointer
+
+private func symbol<T>(_ handle: DylibType, _ name: String) -> T? {
+  guard let result = dlsym(handle, name) else {
+    return nil
+  }
+  return unsafeBitCast(result, to: T.self)
+}
+#endif
+
+/// The Java installation folder for the system, found either with `JAVA_HOME` environment or by checking standard locations
+func systemJavaHome() -> String? {
+  // always defer to JAVA_HOME when it is set in the environment
+  if let javaHome = ProcessInfo.processInfo.environment["JAVA_HOME"] {
+    return javaHome
+  }
+
+  // if JAVA_HOME is unset, hunt around some standard locations
+  var defaultJavaPaths: [String] = []
+
+  #if os(macOS)
+  #if arch(x86_64)
+  defaultJavaPaths += ["/usr/local/opt/java"] // macOS Homebrew x86
+  #else
+  defaultJavaPaths += ["/opt/homebrew/opt/java"] // macOS Homebrew
+  #endif
+  defaultJavaPaths += ["/System/Library/Frameworks/JavaVM.framework/Home"] // macOS legacy path
+  #endif
+
+  #if os(Linux)
+  defaultJavaPaths += [
+    "/usr/lib/jvm/default-java", // Ubuntu/Debian
+    "/usr/lib/jvm/default", // Arch
+    "/usr/lib/jvm/java", // rhel-ubi9, amazonlinux2
+  ]
+  #endif
+
+  if let javaHome = defaultJavaPaths.first(where: {
+    FileManager.default.fileExists(atPath: $0)
+  }) {
+    return javaHome
+  }
+
+  return nil
+}
+
+/// Located the shared library that includes the `JNI_GetCreatedJavaVMs` and `JNI_CreateJavaVM` entry points to the `JNINativeInterface` function table
+private func loadLibJava() throws -> DylibType {
+  #if os(Android)
+  for libname in ["libart.so", "libdvm.so", "libnativehelper.so"] {
+    if let lib = dlopen(libname, RTLD_NOW) {
+      return lib
+    }
+  }
+  #endif
+
+  guard let javaHome = systemJavaHome() else {
+    throw JavaVirtualMachine.VMError.javaHomeNotFound
+  }
+
+  let javaHomeURL = URL(fileURLWithPath: javaHome, isDirectory: true)
+
+  // look through some standard locations relative to JAVA_HOME
+  let libjvmPaths: [URL]
+
+  #if os(Windows)
+  libjvmPaths = [
+    URL(fileURLWithPath: "bin\\server\\jvm.dll", relativeTo: javaHomeURL),
+    URL(fileURLWithPath: "bin\\jvm.dll", relativeTo: javaHomeURL),
+    URL(fileURLWithPath: "bin\\client\\jvm.dll", relativeTo: javaHomeURL), // older JDKs
+  ]
+  #else
+  #if canImport(Darwin)
+  let ext = "dylib" // macOS, etc.
+  #else
+  let ext = "so" // Linux, Android, etc.
+  #endif
+  libjvmPaths = [
+    URL(fileURLWithPath: "jre/lib/server/libjvm.\(ext)", relativeTo: javaHomeURL),
+    URL(fileURLWithPath: "lib/server/libjvm.\(ext)", relativeTo: javaHomeURL),
+    URL(fileURLWithPath: "lib/libjvm.\(ext)", relativeTo: javaHomeURL),
+    URL(fileURLWithPath: "libexec/openjdk.jdk/Contents/Home/lib/server/libjvm.\(ext)", relativeTo: javaHomeURL),
+  ]
+  #endif
+
+  guard
+    let libjvmPath = libjvmPaths.first(where: {
+      FileManager.default.isReadableFile(atPath: $0.path)
+    })
+  else {
+    throw JavaVirtualMachine.VMError.libjvmNotFound
+  }
+
+  #if os(Windows)
+  let dylib = LoadLibraryA(libjvmPath.path)
+  #else
+  let dylib = dlopen(libjvmPath.path, RTLD_NOW)
+  #endif
+
+  guard let dylib else {
+    throw JavaVirtualMachine.VMError.libjvmNotLoaded
+  }
+
+  return dylib
 }
