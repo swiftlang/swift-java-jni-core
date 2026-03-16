@@ -13,10 +13,13 @@
 //===----------------------------------------------------------------------===//
 
 extension UnsafeMutablePointer<JNIEnv?> {
-  public var interface: JNINativeInterface_ { self.pointee!.pointee }
+  public var interface: JNINativeInterface { self.pointee!.pointee }
+}
 
-  // ==== -------------------------------------------------------------------
-  // MARK: JNI Local Frame Helpers
+// ==== -------------------------------------------------------------------
+// MARK: JNI Local Frame Helpers
+
+extension UnsafeMutablePointer<JNIEnv?> {
 
   /// Execute `body` inside a JNI local reference frame.
   ///
@@ -33,8 +36,8 @@ extension UnsafeMutablePointer<JNIEnv?> {
   /// - Returns: The value returned by `body`.
   /// - Throws: Rethrows any error thrown by `body`.
   @inline(__always)
-  public func withJNILocalFrame<R>(capacity: Int32, _ body: () throws -> R) rethrows -> R {
-    let pushed = self.interface.PushLocalFrame(self, capacity)
+  public func withJNILocalFrame<R>(capacity: Int = 16, _ body: () throws -> R) rethrows -> R {
+    let pushed = self.interface.PushLocalFrame(self, Int32(capacity))
     if pushed != JNI_OK {
       // PushLocalFrame failed (OutOfMemoryError pending). Execute body without
       // a frame rather than popping the wrong frame in the defer.
@@ -59,8 +62,8 @@ extension UnsafeMutablePointer<JNIEnv?> {
   /// - Returns: A new local reference in the outer frame to the same object.
   /// - Throws: Rethrows any error thrown by `body`.
   @inline(__always)
-  public func withJNILocalFramePromoting(capacity: Int32, _ body: () throws -> jobject?) rethrows -> jobject? {
-    let pushed = self.interface.PushLocalFrame(self, capacity)
+  public func withJNILocalFramePromotingResult(capacity: Int = 16, _ body: () throws -> jobject?) rethrows -> jobject? {
+    let pushed = self.interface.PushLocalFrame(self, Int32(capacity))
     if pushed != JNI_OK {
       return try body()
     }
