@@ -12,6 +12,16 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if canImport(Glibc)
+import Glibc
+#elseif canImport(Musl)
+import Musl
+#elseif canImport(Darwin)
+import Darwin
+#elseif os(Windows)
+import ucrt
+#endif
+
 // ==== -------------------------------------------------------------------
 // MARK: Local Frame Helpers
 
@@ -25,7 +35,37 @@
 //
 // See: https://docs.oracle.com/en/java/javase/21/docs/specs/jni/functions.html#local-references
 
+/// Whether to print JNI `OutOfMemoryError` stack traces to stderr.
+///
+/// Checked once on first OOM and cached. Set the environment variable
+/// `SWIFT_JAVA_JNI_EXCEPTION_DESCRIBE_OOM` to `true` or `1` to enable.
+private let describeOOMException: Bool = {
+  guard let value = getenv("SWIFT_JAVA_JNI_EXCEPTION_DESCRIBE_OOM") else {
+    return false
+  }
+  let str = String(cString: value).lowercased()
+  return str == "1" || str == "true" || str == "yes"
+}()
+
 extension UnsafeMutablePointer<JNIEnv?> {
+
+  /// Handle a `PushLocalFrame` failure by optionally describing the pending
+  /// exception to stderr, clearing it, and throwing a Swift error.
+  ///
+  /// Must be called while the `OutOfMemoryError` is still pending (i.e.
+  /// before `ExceptionClear`). `ExceptionDescribe` is safe to call with a
+  /// pending exception — it prints the stack trace to stderr and does **not**
+  /// clear the exception.
+  @inline(__always)
+  internal func throwPushLocalFrameOOM(capacity: Int) throws -> Never {
+    if describeOOMException {
+      // Print the pending OutOfMemoryError stack trace to stderr.
+      // ExceptionDescribe does not clear the exception.
+      self.interface.ExceptionDescribe(self)
+    }
+    self.interface.ExceptionClear(self)
+    throw JNIError.outOfMemory(framePushCapacity: capacity)
+  }
 
   /// Execute `body` inside a JNI local reference frame.
   ///
@@ -33,25 +73,21 @@ extension UnsafeMutablePointer<JNIEnv?> {
   /// This prevents local reference table overflow when making many JNI calls
   /// (e.g., in loops or from non-JVM threads like Swift's cooperative pool).
   ///
-  /// If `PushLocalFrame` fails (returns negative), `body` is still executed
-  /// but without a frame — this avoids popping the wrong frame on error.
-  ///
   /// - Parameter capacity: Hint for how many local refs will be created.
   ///   The JVM may allocate more if needed. Must be > 0.
   /// - Parameter body: The closure to execute inside the local frame.
   /// - Returns: The value returned by `body`.
-  /// - Throws: Rethrows any error thrown by `body`.
+  /// - Throws: ``JNIError/outOfMemory`` if `PushLocalFrame` fails, or
+  ///   rethrows any error thrown by `body`.
   ///
   /// ## See Also
   /// - [JNI PushLocalFrame](https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html#PushLocalFrame)
   /// - [JNI PopLocalFrame](https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html#PopLocalFrame)
   @inline(__always)
-  public func withLocalFrame<R>(capacity: Int = 16, _ body: () throws -> R) rethrows -> R {
+  public func withLocalFrame<R>(capacity: Int = 16, _ body: () throws -> R) throws -> R {
     let pushed = self.interface.PushLocalFrame(self, Int32(capacity))
     if pushed != JNI_OK {
-      // PushLocalFrame failed (OutOfMemoryError pending). Execute body without
-      // a frame rather than popping the wrong frame in the defer.
-      return try body()
+      try self.throwPushLocalFrameOOM(capacity: capacity)
     }
     defer { _ = self.interface.PopLocalFrame(self, nil) }
     return try body()
@@ -70,16 +106,17 @@ extension UnsafeMutablePointer<JNIEnv?> {
   /// - Parameter capacity: Hint for how many local refs will be created.
   /// - Parameter body: Closure that returns the `jobject` to promote.
   /// - Returns: A new local reference in the outer frame to the same object.
-  /// - Throws: Rethrows any error thrown by `body`.
+  /// - Throws: ``JNIError/outOfMemory`` if `PushLocalFrame` fails, or
+  ///   rethrows any error thrown by `body`.
   ///
   /// ## See Also
   /// - [JNI PushLocalFrame](https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html#PushLocalFrame)
   /// - [JNI PopLocalFrame](https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html#PopLocalFrame)
   @inline(__always)
-  public func withLocalFramePromotingResult(capacity: Int = 16, _ body: () throws -> jobject?) rethrows -> jobject? {
+  public func withLocalFramePromotingResult(capacity: Int = 16, _ body: () throws -> jobject?) throws -> jobject? {
     let pushed = self.interface.PushLocalFrame(self, Int32(capacity))
     if pushed != JNI_OK {
-      return try body()
+      try self.throwPushLocalFrameOOM(capacity: capacity)
     }
     do {
       let result = try body()

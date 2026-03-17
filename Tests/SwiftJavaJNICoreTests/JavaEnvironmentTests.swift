@@ -38,7 +38,7 @@ struct JavaEnvironmentTests {
   func withLocalFrame_returnsBodyValue() throws {
     let env = try JavaVirtualMachine.shared().environment()
 
-    let result = env.withLocalFrame(capacity: 4) {
+    let result = try env.withLocalFrame(capacity: 4) {
       42
     }
     #expect(result == 42)
@@ -48,7 +48,7 @@ struct JavaEnvironmentTests {
   func withLocalFrame_defaultCapacity() throws {
     let env = try JavaVirtualMachine.shared().environment()
 
-    let result = env.withLocalFrame {
+    let result = try env.withLocalFrame {
       "hello"
     }
     #expect(result == "hello")
@@ -71,7 +71,7 @@ struct JavaEnvironmentTests {
   func withLocalFrame_localRefsWorkInsideFrame() throws {
     let env = try JavaVirtualMachine.shared().environment()
 
-    env.withLocalFrame(capacity: 8) {
+    try env.withLocalFrame(capacity: 8) {
       // Create a local ref inside the frame — it should be valid here
       let cls = env.interface.FindClass(env, "java/lang/String")
       #expect(cls != nil, "Should be able to find java.lang.String inside frame")
@@ -82,7 +82,7 @@ struct JavaEnvironmentTests {
   func withLocalFramePromotingResult_promotesObject() throws {
     let env = try JavaVirtualMachine.shared().environment()
 
-    let promoted = env.withLocalFramePromotingResult(capacity: 8) { () -> jobject? in
+    let promoted = try env.withLocalFramePromotingResult(capacity: 8) { () -> jobject? in
       // Create a Java String inside the frame
       let str = env.interface.NewStringUTF(env, "test")
       return str
@@ -103,7 +103,7 @@ struct JavaEnvironmentTests {
   func withLocalFramePromotingResult_nilResult() throws {
     let env = try JavaVirtualMachine.shared().environment()
 
-    let result = env.withLocalFramePromotingResult {
+    let result = try env.withLocalFramePromotingResult {
       nil
     }
     #expect(result == nil)
