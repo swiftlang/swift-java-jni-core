@@ -393,10 +393,6 @@ extension JavaVirtualMachine {
       }
     }
   }
-
-  enum JavaKitError: Error {
-    case classpathEntryNotFound(entry: String, classpath: [String])
-  }
 }
 
 // ==== ------------------------------------------------------------------------
