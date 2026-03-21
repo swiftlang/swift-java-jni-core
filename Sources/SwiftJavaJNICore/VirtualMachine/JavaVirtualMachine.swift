@@ -347,7 +347,7 @@ extension JavaVirtualMachine {
 
 extension JavaVirtualMachine {
   /// Describes the kinds of errors that can occur when interacting with JNI.
-  enum VMError: Error {
+  public enum VMError: Error {
     /// There is already a Java Virtual Machine.
     case existingVM
 
