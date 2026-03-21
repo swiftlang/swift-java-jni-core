@@ -260,70 +260,74 @@ extension JavaVirtualMachine {
     vmOptions: [String] = [],
     ignoreUnrecognized: Bool = false,
     replace: Bool = false
-  ) throws -> JavaVirtualMachine {
+  ) throws(VMError) -> JavaVirtualMachine {
     precondition(
       !classpath.contains(where: { $0.contains(FileManager.pathSeparator) }),
       "Classpath element must not contain `\(FileManager.pathSeparator)`! Split the path into elements! Was: \(classpath)"
     )
 
-    return try sharedJVM.withLock { (sharedJVMPointer: inout JavaVirtualMachine?) in
-      // If we already have a JavaVirtualMachine instance, return it.
-      if replace {
-        print("[swift-java] Replace JVM instance!")
-        try sharedJVMPointer?.destroyJVM()
-        sharedJVMPointer = nil
-      } else {
-        if let existingInstance = sharedJVMPointer {
-          // FIXME: this isn't ideal; we silently ignored that we may have requested a different classpath or options
-          return existingInstance
+    return try sharedJVM.withLock { (sharedJVMPointer: inout JavaVirtualMachine?) throws(VMError) in
+        // If we already have a JavaVirtualMachine instance, return it.
+        if replace {
+          print("[swift-java] Replace JVM instance!")
+          try sharedJVMPointer?.destroyJVM()
+          sharedJVMPointer = nil
+        } else {
+          if let existingInstance = sharedJVMPointer {
+            // FIXME: this isn't ideal; we silently ignored that we may have requested a different classpath or options
+            return existingInstance
+          }
         }
-      }
 
-      typealias GetCreatedJavaVMs = @convention(c) (_ pvm: UnsafeMutablePointer<JavaVMPointer?>, _ count: Int32, _ num: UnsafeMutablePointer<Int32>) -> jint
-      guard let getCreatedJavaVMs: GetCreatedJavaVMs = symbol(try loadLibJava(), "JNI_GetCreatedJavaVMs") else {
-        throw VMError.cannotLoadGetCreatedJavaVMs
-      }
+        typealias GetCreatedJavaVMs = @convention(c) (_ pvm: UnsafeMutablePointer<JavaVMPointer?>, _ count: Int32, _ num: UnsafeMutablePointer<Int32>) -> jint
+        guard let getCreatedJavaVMs: GetCreatedJavaVMs = symbol(try loadLibJava(), "JNI_GetCreatedJavaVMs") else {
+          throw VMError.cannotLoadGetCreatedJavaVMs
+        }
 
-      while true {
-        var wasExistingVM: Bool = false
         while true {
-          // Query the JVM itself to determine whether there is a JVM
-          // instance that we don't yet know about.
-          var jvm: JavaVMPointer? = nil
-          var numJVMs: jsize = 0
-          if getCreatedJavaVMs(&jvm, 1, &numJVMs) == JNI_OK, numJVMs >= 1 {
-            // Adopt this JVM into a new instance of the JavaVirtualMachine
-            // wrapper.
-            let javaVirtualMachine = JavaVirtualMachine(adoptingJVM: jvm!)
+          var wasExistingVM: Bool = false
+          while true {
+            // Query the JVM itself to determine whether there is a JVM
+            // instance that we don't yet know about.
+            var jvm: JavaVMPointer? = nil
+            var numJVMs: jsize = 0
+            if getCreatedJavaVMs(&jvm, 1, &numJVMs) == JNI_OK, numJVMs >= 1 {
+              // Adopt this JVM into a new instance of the JavaVirtualMachine
+              // wrapper.
+              let javaVirtualMachine = JavaVirtualMachine(adoptingJVM: jvm!)
+              sharedJVMPointer = javaVirtualMachine
+              return javaVirtualMachine
+            }
+
+            precondition(
+              !wasExistingVM,
+              "JVM reports that an instance of the JVM was already created, but we didn't see it."
+            )
+
+            // Create a new instance of the JVM.
+            let javaVirtualMachine: JavaVirtualMachine
+            do {
+              javaVirtualMachine = try JavaVirtualMachine(
+                classpath: classpath,
+                vmOptions: vmOptions,
+                ignoreUnrecognized: ignoreUnrecognized
+              )
+            } catch VMError.existingVM {
+              // We raced with code outside of this JavaVirtualMachine instance
+              // that created a VM while we were trying to do the same. Go
+              // through the loop again to pick up the underlying JVM pointer.
+              wasExistingVM = true
+              continue
+            } catch let error as VMError {
+              throw error
+            } catch {
+              fatalError("Unexpected non-VMError from JavaVirtualMachine.init: \(error)")
+            }
+
             sharedJVMPointer = javaVirtualMachine
             return javaVirtualMachine
           }
-
-          precondition(
-            !wasExistingVM,
-            "JVM reports that an instance of the JVM was already created, but we didn't see it."
-          )
-
-          // Create a new instance of the JVM.
-          let javaVirtualMachine: JavaVirtualMachine
-          do {
-            javaVirtualMachine = try JavaVirtualMachine(
-              classpath: classpath,
-              vmOptions: vmOptions,
-              ignoreUnrecognized: ignoreUnrecognized
-            )
-          } catch VMError.existingVM {
-            // We raced with code outside of this JavaVirtualMachine instance
-            // that created a VM while we were trying to do the same. Go
-            // through the loop again to pick up the underlying JVM pointer.
-            wasExistingVM = true
-            continue
-          }
-
-          sharedJVMPointer = javaVirtualMachine
-          return javaVirtualMachine
         }
-      }
     }
   }
 
