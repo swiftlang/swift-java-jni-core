@@ -111,26 +111,24 @@ package struct LockedState<State> {
     )
   }
 
-  package func withLock<T>(_ body: @Sendable (inout State) throws -> T) rethrows -> T {
+  package func withLock<T, E: Error>(_ body: @Sendable (inout State) throws(E) -> T) throws(E) -> T {
     try withLockUnchecked(body)
   }
 
-  package func withLockUnchecked<T>(_ body: (inout State) throws -> T) rethrows -> T {
-    try _buffer.withUnsafeMutablePointers { state, lock in
-      _Lock.lock(lock)
-      defer { _Lock.unlock(lock) }
-      return try body(&state.pointee)
-    }
+  package func withLockUnchecked<T, E: Error>(_ body: (inout State) throws(E) -> T) throws(E) -> T {
+    _buffer.withUnsafeMutablePointerToElements { _Lock.lock($0) }
+    defer { _buffer.withUnsafeMutablePointerToElements { _Lock.unlock($0) } }
+    return try body(&_buffer.header)
   }
 
   // Ensures the managed state outlives the locked scope.
-  package func withLockExtendingLifetimeOfState<T>(_ body: @Sendable (inout State) throws -> T) rethrows -> T {
-    try _buffer.withUnsafeMutablePointers { state, lock in
-      _Lock.lock(lock)
-      return try withExtendedLifetime(state.pointee) {
-        defer { _Lock.unlock(lock) }
-        return try body(&state.pointee)
-      }
+  package func withLockExtendingLifetimeOfState<T, E: Error>(_ body: @Sendable (inout State) throws(E) -> T) throws(E) -> T {
+    _buffer.withUnsafeMutablePointerToElements { _Lock.lock($0) }
+    defer { _buffer.withUnsafeMutablePointerToElements { _Lock.unlock($0) } }
+    do {
+      return try body(&_buffer.header)
+    } catch {
+      throw error
     }
   }
 }
@@ -140,10 +138,10 @@ extension LockedState where State == Void {
     self.init(initialState: ())
   }
 
-  package func withLock<R: Sendable>(_ body: @Sendable () throws -> R) rethrows -> R {
-    try withLock { _ in
-      try body()
-    }
+  package func withLock<R: Sendable, E: Error>(_ body: @Sendable () throws(E) -> R) throws(E) -> R {
+    _buffer.withUnsafeMutablePointerToElements { _Lock.lock($0) }
+    defer { _buffer.withUnsafeMutablePointerToElements { _Lock.unlock($0) } }
+    return try body()
   }
 
   package func lock() {
