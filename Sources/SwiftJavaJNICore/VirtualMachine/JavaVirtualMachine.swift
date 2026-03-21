@@ -80,7 +80,7 @@ public final class JavaVirtualMachine: @unchecked Sendable {
     classpath: [String] = [],
     vmOptions: [String] = [],
     ignoreUnrecognized: Bool = false
-  ) throws {
+  ) throws(VMError) {
     self.classpath = classpath
     var jvm: JavaVMPointer? = nil
     var environment: JNIEnvPointer? = nil
@@ -141,7 +141,7 @@ public final class JavaVirtualMachine: @unchecked Sendable {
     self.destroyOnDeinit = .init(initialState: true)
   }
 
-  public func destroyJVM() throws {
+  public func destroyJVM() throws(VMError) {
     try self.detachCurrentThread()
     if let error = VMError(fromJNIError: jvm.pointee!.pointee.DestroyJavaVM(jvm)) {
       throw error
@@ -177,7 +177,7 @@ extension JavaVirtualMachine {
   /// - Parameter
   ///   - asDaemon: Whether this thread should be treated as a daemon
   ///     thread in the Java Virtual Machine.
-  public func environment(asDaemon: Bool = false) throws -> JNIEnvironment {
+  public func environment(asDaemon: Bool = false) throws(VMError) -> JNIEnvironment {
     // Check whether this thread is already attached. If so, return the
     // corresponding environment.
     var environment: UnsafeMutableRawPointer? = nil
@@ -213,7 +213,7 @@ extension JavaVirtualMachine {
 
   /// Detach the current thread from the Java Virtual Machine. All Java
   /// threads waiting for this thread to die are notified.
-  func detachCurrentThread() throws {
+  func detachCurrentThread() throws(VMError) {
     if let resultError = VMError(fromJNIError: jvm.pointee!.pointee.DetachCurrentThread(jvm)) {
       throw resultError
     }
@@ -459,7 +459,7 @@ func systemJavaHome() -> String? {
 }
 
 /// Located the shared library that includes the `JNI_GetCreatedJavaVMs` and `JNI_CreateJavaVM` entry points to the `JNINativeInterface` function table
-private func loadLibJava() throws -> DylibType {
+private func loadLibJava() throws(JavaVirtualMachine.VMError) -> DylibType {
   #if os(Android)
   for libname in ["libart.so", "libdvm.so", "libnativehelper.so"] {
     if let lib = dlopen(libname, RTLD_NOW) {
