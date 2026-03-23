@@ -16,7 +16,7 @@ extension JavaType {
   /// Form a Java type based on the name that is produced by
   /// java.lang.Class.getName(). This can be primitive types like "int",
   /// class types like "java.lang.String", or arrays thereof.
-  public init(javaTypeName: String) throws(JavaDemanglingError) {
+  public init(javaTypeName: String) throws {
     switch javaTypeName {
     case "boolean": self = .boolean
     case "byte": self = .byte

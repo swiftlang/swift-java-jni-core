@@ -14,7 +14,7 @@
 
 extension JavaType {
   /// Demangle a Java type name into a representation of the type.
-  public init(mangledName: String) throws(JavaDemanglingError) {
+  public init(mangledName: String) throws {
     var mangledName = mangledName[...]
     self = try JavaType.demangleNextType(from: &mangledName)
     if !mangledName.isEmpty {
@@ -43,7 +43,7 @@ extension JavaType {
 
 extension MethodSignature {
   /// Demangle the given method Java signature.
-  public init(mangledName: String) throws(JavaDemanglingError) {
+  public init(mangledName: String) throws {
     // Method signatures have the form "(parameter-types)result-type".
     guard mangledName.starts(with: "(") else {
       throw JavaDemanglingError.invalidMangledName(mangledName)
