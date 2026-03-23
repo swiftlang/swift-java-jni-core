@@ -312,7 +312,7 @@ extension JavaVirtualMachine {
               vmOptions: vmOptions,
               ignoreUnrecognized: ignoreUnrecognized
             )
-          } catch VMError.existingVM {
+          } catch .existingVM {
             // We raced with code outside of this JavaVirtualMachine instance
             // that created a VM while we were trying to do the same. Go
             // through the loop again to pick up the underlying JVM pointer.
@@ -376,9 +376,9 @@ extension JavaVirtualMachine {
 
     /// The kinds of errors that can occur when interacting with JNI.
     public struct Code: RawRepresentable, Equatable, Hashable, Sendable {
-      public let rawValue: jint
+      public let rawValue: Int32
 
-      public init(rawValue: jint) {
+      public init(rawValue: Int32) {
         self.rawValue = rawValue
       }
 
@@ -411,11 +411,16 @@ extension JavaVirtualMachine {
 
       /// Cannot load `JNI_CreateJavaVM` from `libjvm`.
       public static var cannotLoadCreateJavaVM: Code { Code(rawValue: -104) }
-
-      /// Unknown JNI error. Check `VMError.jniErrorCode` for the raw value.
-      public static var unknown: Code { Code(rawValue: -999) }
     }
   }
+}
+
+/// Pattern matching operator to enable switching on ``JavaVirtualMachine.VMError`` codes.
+public func ~= (code: JavaVirtualMachine.VMError.Code, error: any Error) -> Bool {
+  guard let error = error as? JavaVirtualMachine.VMError else {
+    return false
+  }
+  return error.code == code
 }
 
 // ==== ------------------------------------------------------------------------
