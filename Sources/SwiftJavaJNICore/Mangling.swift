@@ -82,7 +82,7 @@ extension MethodSignature {
 extension JavaType {
   /// Demangle the next Java type from the given string, shrinking the input
   /// string and producing demangled type.
-  static func demangleNextType(from string: inout Substring) throws -> JavaType {
+  static func demangleNextType(from string: inout Substring) throws(JavaDemanglingError) -> JavaType {
     guard let firstChar = string.first else {
       throw JavaDemanglingError.invalidMangledName(String(string))
     }

@@ -59,7 +59,7 @@ extension UnsafeMutablePointer<JNIEnv?> {
   /// pending exception — it prints the stack trace to stderr and does **not**
   /// clear the exception.
   @inline(__always)
-  internal func throwPushLocalFrameOOM(capacity: Int) throws -> Never {
+  internal func throwPushLocalFrameOOM(capacity: Int) throws(JNIError) -> Never {
     if describeOOMException {
       // Print the pending OutOfMemoryError stack trace to stderr.
       // ExceptionDescribe does not clear the exception.
