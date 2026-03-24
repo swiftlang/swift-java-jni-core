@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 /// Describes a Java annotation (e.g. `@Deprecated` or `@Unsigned`)
-public struct JavaAnnotation: Equatable, Hashable {
+public struct JavaAnnotation: Equatable, Hashable, Sendable {
   public let type: JavaType
   public let arguments: [String]
 
