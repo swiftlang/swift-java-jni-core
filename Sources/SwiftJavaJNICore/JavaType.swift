@@ -15,7 +15,7 @@
 /// Describes the Java type system.
 ///
 /// Some types may need to be annotated when in parameter position,
-public enum JavaType: Equatable, Hashable {
+public enum JavaType: Equatable, Hashable, Sendable {
   case boolean
   case byte(parameterAnnotations: [JavaAnnotation])
   case char(parameterAnnotations: [JavaAnnotation])

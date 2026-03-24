@@ -41,26 +41,30 @@ extension JavaType: CustomStringConvertible {
   /// Description of the Java type as it would appear in Java source.
   public var description: String {
     switch self {
-    case .boolean: "boolean"
-    case .byte: "byte"
-    case .char: "char"
-    case .short: "short"
-    case .int: "int"
-    case .long: "long"
-    case .float: "float"
-    case .double: "double"
-    case .void: "void"
-    case .array(let elementType): "\(elementType.description)[]"
+    case .boolean: return "boolean"
+    case .byte: return "byte"
+    case .char: return "char"
+    case .short: return "short"
+    case .int: return "int"
+    case .long: return "long"
+    case .float: return "float"
+    case .double: return "double"
+    case .void: return "void"
+    case .array(let elementType): return "\(elementType.description)[]"
     case .class(let package, let name, let typeParameters):
-      if let package {
-        if !typeParameters.isEmpty {
-          "\(package).\(name)<\(typeParameters.map(\.description).joined(separator: ", "))>"
+      let packageClause: String =
+        if let package {
+          "\(package)."
         } else {
-          "\(package).\(name)"
+          ""
         }
-      } else {
-        name
-      }
+      let genericClause: String =
+        if !typeParameters.isEmpty {
+          "<\(typeParameters.map(\.description).joined(separator: ", "))>"
+        } else {
+          ""
+        }
+      return "\(packageClause)\(name)\(genericClause)"
     }
   }
 
