@@ -1,18 +1,16 @@
 # Swift Java JNI Core
 
-## Swift Java Interoperability
-
-Swift offers Java interoperability using the [SwiftJava](https://github.com/swiftlang/swift-java) package, package plugins, and also the `swift-java` command line tool for source generation (similar to OpenJDK jextract, if you are familiar with that concept). 
-
-Most developers should prever the use of that package, as it features bullet proof ways to make your inter-op code safe and performant, by using either source generation (`swift-java`) when calling Swift from Java, or Swift macros (`@JavaMethod`, ...) when calling Java from Swift. Multiple safeguards and optimizations are built into the SwiftJava library and we highly recommend using it instead of this low level "raw JNI" package.
-
-## Swift Java JNI Core
-
 The swift-java-jni-core package presents a *low-level* Swift-friendly interface to the Java Native Interface (JNI) specification, which is the universal set of data types and functions for interacting with a Java Virtual Machine and compatible derivatives, such as the Android Runtime (ART). You can view it as a thin layer on top of the `jni.h` along with pre-packaged type conversions and ways to interact with the JVM from Swift.
 
 This package is designed to offer low-level zero-dependency support for higher-level modules, such as [SwiftJava](https://github.com/swiftlang/swift-java) and other projects.
 
-## Features
+## Swift Java Interoperability
+
+Swift offers Java interoperability using the [SwiftJava](https://github.com/swiftlang/swift-java) package, package plugins, and also the `swift-java` command line tool for source generation (similar to OpenJDK jextract, if you are familiar with that concept). 
+
+Most developers would benefit from using the SwiftJava package, as it features robust ways to make your interop code safe and performant, by using either source generation (`swift-java`) when calling Swift from Java, or Swift macros (`@JavaMethod`, ...) when calling Java from Swift. Multiple safeguards and optimizations are built into the SwiftJava library and we highly recommend using it instead of this low level "raw JNI" package.
+
+## Swift Java JNI Core Features
 
 ### JavaValue
 
@@ -29,4 +27,3 @@ This C module provides the standardized and implementation-agnostic headers for 
 ## Contributing
 
 Contributions are more than welcome, and you can read more about the process in [CONTRIBUTING.md](CONTRIBUTING.md).
-
