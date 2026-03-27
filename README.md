@@ -4,6 +4,8 @@ The swift-java-jni-core package presents a *low-level* Swift-friendly interface 
 
 This package is designed to offer low-level zero-dependency support for higher-level modules, such as [SwiftJava](https://github.com/swiftlang/swift-java) and other projects.
 
+> Most developers should prefer to use the [SwiftJava](https://github.com/swiftlang/swift-java) package for language interoperability. The `swift-java-jni-core` package exists solely for sharing low-level infrastructure.
+
 ## Swift Java Interoperability
 
 Swift offers Java interoperability using the [SwiftJava](https://github.com/swiftlang/swift-java) package, package plugins, and also the `swift-java` command line tool for source generation (similar to OpenJDK jextract, if you are familiar with that concept). 
