@@ -77,16 +77,20 @@ extension Array: JavaValue where Element: JavaValue {
   @inlinable
   public func getJNIValue(in environment: JNIEnvironment) -> JNIType {
     let count = self.count
-    var jniArray = Element.jniNewArray(in: environment)(environment, Int32(count))!
 
     if Element.self == UInt8.self || Element.self == Int8.self {
-      // Fast path, Since the memory layout of `jbyte`` and those is the same, we rebind the memory
-      // rather than convert every element independently. This allows us to avoid another Swift array creation.
+      // Fast path: the memory layout of jbyte and UInt8/Int8 is identical,
+      // so we rebind the memory rather than convert every element independently
+      var jniArray = Element.jniNewArray(in: environment)(environment, Int32(count))!
       self.withUnsafeBytes { buffer in
         buffer.getJNIValue(into: &jniArray, in: environment)
       }
+      return jniArray
     } else {
-      // Slow path, convert every element to the apropriate JNIType:
+      // Slow path, convert every element to the appropriate JNIType.
+      // Use Self.jniNewArray (not Element.jniNewArray) so that nested arrays
+      // get the correct outer array type, e.g. [[String]] creates String[][]
+      let jniArray = Self.jniNewArray(in: environment)(environment, Int32(count))!
       let jniElementBuffer: [Element.JNIType] = self.map { // meh, temporary array
         $0.getJNIValue(in: environment)
       }
@@ -97,9 +101,8 @@ extension Array: JavaValue where Element: JavaValue {
         jsize(self.count),
         jniElementBuffer
       )
+      return jniArray
     }
-
-    return jniArray
   }
 
   public static func jniMethodCall(in environment: JNIEnvironment) -> JNIMethodCall<JNIType> {
@@ -128,9 +131,8 @@ extension Array: JavaValue where Element: JavaValue {
 
   public static func jniNewArray(in environment: JNIEnvironment) -> JNINewArray {
     { environment, size in
-      // FIXME: We should have a bridged JavaArray that we can use here.
-      let arrayClass = environment.interface.FindClass(environment, "java/lang/Array")
-      return environment.interface.NewObjectArray(environment, size, arrayClass, nil)
+      let elementClass = environment.interface.FindClass(environment, Element.javaType.jniFindClassName)
+      return environment.interface.NewObjectArray(environment, size, elementClass, nil)
     }
   }
 

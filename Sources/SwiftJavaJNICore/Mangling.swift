@@ -35,8 +35,26 @@ extension JavaType {
     case .short: "S"
     case .void: "V"
     case .array(let elementType): "[" + elementType.mangledName
-    case .class(let package, let name, _):
-      "L\(package!).\(name.replacingPeriodsWithDollars());".replacingPeriodsWithSlashes()
+    case .class(.some(let package), let name, _):
+      "L\(package).\(name.replacingPeriodsWithDollars());".replacingPeriodsWithSlashes()
+    case .class(.none, let name, _):
+      "L\(name.replacingPeriodsWithDollars());".replacingPeriodsWithSlashes()
+    }
+  }
+
+  /// The class name format expected by JNI's ``FindClass`` function.
+  ///
+  /// For classes this is the slash-separated fully qualified name (e.g. `"java/lang/String"`),
+  /// which differs from ``mangledName`` that wraps it in `L...;`.
+  /// For arrays, the format matches ``mangledName`` (e.g. `"[Ljava/lang/String;"`).
+  public var jniFindClassName: String {
+    switch self {
+    case .class:
+      let mangled = mangledName
+      assert(mangled.hasPrefix("L") && mangled.hasSuffix(";"))
+      return String(mangled.dropFirst().dropLast())
+    default:
+      return mangledName
     }
   }
 }
