@@ -129,4 +129,80 @@ struct JavaEnvironmentTests {
     // Should not crash
     env.deleteLocalRef(nil)
   }
+
+  @Test(.enabled(if: isSupportedPlatform))
+  func jniNewArray_nestedStringArray() throws {
+    let env = try JavaVirtualMachine.shared().environment()
+
+    // Use jniNewArray to create a String[][] — this is the function fixed by HEAD
+    let makeOuter = [[String]].jniNewArray(in: env)
+    let outer = makeOuter(env, 2)
+    #expect(outer != nil)
+
+    // Create inner String[] arrays via getJNIValue and store them
+    let inner0 = ["hello", "world"].getJNIValue(in: env)
+    let inner1 = ["foo"].getJNIValue(in: env)
+
+    env.interface.SetObjectArrayElement(env, outer, 0, inner0)
+    env.interface.SetObjectArrayElement(env, outer, 1, inner1)
+
+    // Read back and verify structure
+    let readInner0 = env.interface.GetObjectArrayElement(env, outer, 0)
+    #expect(readInner0 != nil)
+    #expect(env.interface.GetArrayLength(env, readInner0) == 2)
+
+    let readInner1 = env.interface.GetObjectArrayElement(env, outer, 1)
+    #expect(readInner1 != nil)
+    #expect(env.interface.GetArrayLength(env, readInner1) == 1)
+  }
+
+  @Test(.enabled(if: isSupportedPlatform))
+  func jniNewArray_tripleNestedStringArray() throws {
+    let env = try JavaVirtualMachine.shared().environment()
+
+    // String[][][]
+    let makeOuter = [[[String]]].jniNewArray(in: env)
+    let outer = makeOuter(env, 1)
+    #expect(outer != nil)
+  }
+
+  @Test(.enabled(if: isSupportedPlatform))
+  func getJNIValue_nestedStringArray() throws {
+    let env = try JavaVirtualMachine.shared().environment()
+
+    let jniValue = [["hello", "world"]].getJNIValue(in: env)
+    #expect(jniValue != nil)
+
+    let outerLen = env.interface.GetArrayLength(env, jniValue)
+    #expect(outerLen == 1)
+
+    // Verify inner elements are accessible
+    let inner = env.interface.GetObjectArrayElement(env, jniValue, 0)
+    #expect(inner != nil)
+    #expect(env.interface.GetArrayLength(env, inner) == 2)
+  }
+
+  @Test(.enabled(if: isSupportedPlatform))
+  func getJNIValue_nestedInt32Array() throws {
+    let env = try JavaVirtualMachine.shared().environment()
+
+    let jniValue: jobject? = [[Int32(1), Int32(2), Int32(3)], [Int32(4)]].getJNIValue(in: env)
+    #expect(jniValue != nil)
+
+    let outerLen = env.interface.GetArrayLength(env, jniValue)
+    #expect(outerLen == 2)
+
+    // Verify inner arrays are accessible and have correct lengths
+    let inner0 = env.interface.GetObjectArrayElement(env, jniValue, 0)
+    #expect(inner0 != nil)
+    #expect(env.interface.GetArrayLength(env, inner0) == 3)
+
+    let inner1 = env.interface.GetObjectArrayElement(env, jniValue, 1)
+    #expect(inner1 != nil)
+    #expect(env.interface.GetArrayLength(env, inner1) == 1)
+
+    // Round-trip: read back inner values
+    let roundTripped = [[Int32]](fromJNI: jniValue, in: env)
+    #expect(roundTripped == [[1, 2, 3], [4]])
+  }
 }
