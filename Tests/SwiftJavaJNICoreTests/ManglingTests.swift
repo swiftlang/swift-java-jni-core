@@ -65,17 +65,19 @@ struct ManglingTests {
   @Test
   func nestedArrayElementMangledName() throws {
     let nestedIntArray = JavaType.array(.array(.int))
-    let elementType = switch nestedIntArray {
+    let elementType =
+      switch nestedIntArray {
       case .array(let element): element
       default: fatalError("expected array type")
-    }
+      }
     #expect(elementType.mangledName == "[I")
 
     let nestedStringArray = JavaType.array(.array(.class(package: "java.lang", name: "String")))
-    let stringElementType = switch nestedStringArray {
+    let stringElementType =
+      switch nestedStringArray {
       case .array(let element): element
       default: fatalError("expected array type")
-    }
+      }
     #expect(stringElementType.mangledName == "[Ljava/lang/String;")
   }
 
