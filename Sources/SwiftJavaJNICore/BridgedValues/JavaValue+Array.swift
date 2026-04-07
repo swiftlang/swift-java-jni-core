@@ -88,15 +88,22 @@ extension Array: JavaValue where Element: JavaValue {
       return jniArray
     } else {
       // Slow path, convert every element to the appropriate JNIType.
-      // Use Self.jniNewArray (not Element.jniNewArray) so that nested arrays
-      // get the correct outer array type, e.g. [[String]] creates String[][]
-      let jniArray = Self.jniNewArray(in: environment)(environment, Int32(count))!
+      // For object/array elements, use Self.jniNewArray so that nested arrays
+      // get the correct outer array type, e.g. [[String]] creates String[][].
+      // For primitive elements (Int32, Float, etc.), use Element.jniNewArray
+      // which dispatches to the correct JNI function (NewIntArray, etc.)
+      let jniArray: jobject?
+      if Element.javaType.isPrimitive {
+        jniArray = Element.jniNewArray(in: environment)(environment, Int32(count))
+      } else {
+        jniArray = Self.jniNewArray(in: environment)(environment, Int32(count))
+      }
       let jniElementBuffer: [Element.JNIType] = self.map { // meh, temporary array
         $0.getJNIValue(in: environment)
       }
       Element.jniSetArrayRegion(in: environment)(
         environment,
-        jniArray,
+        jniArray!,
         0,
         jsize(self.count),
         jniElementBuffer

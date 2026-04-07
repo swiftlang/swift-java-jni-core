@@ -181,4 +181,28 @@ struct JavaEnvironmentTests {
     #expect(inner != nil)
     #expect(env.interface.GetArrayLength(env, inner) == 2)
   }
+
+  @Test(.enabled(if: isSupportedPlatform))
+  func getJNIValue_nestedInt32Array() throws {
+    let env = try JavaVirtualMachine.shared().environment()
+
+    let jniValue: jobject? = [[Int32(1), Int32(2), Int32(3)], [Int32(4)]].getJNIValue(in: env)
+    #expect(jniValue != nil)
+
+    let outerLen = env.interface.GetArrayLength(env, jniValue)
+    #expect(outerLen == 2)
+
+    // Verify inner arrays are accessible and have correct lengths
+    let inner0 = env.interface.GetObjectArrayElement(env, jniValue, 0)
+    #expect(inner0 != nil)
+    #expect(env.interface.GetArrayLength(env, inner0) == 3)
+
+    let inner1 = env.interface.GetObjectArrayElement(env, jniValue, 1)
+    #expect(inner1 != nil)
+    #expect(env.interface.GetArrayLength(env, inner1) == 1)
+
+    // Round-trip: read back inner values
+    let roundTripped = [[Int32]](fromJNI: jniValue, in: env)
+    #expect(roundTripped == [[1, 2, 3], [4]])
+  }
 }
