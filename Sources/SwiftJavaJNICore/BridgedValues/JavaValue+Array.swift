@@ -21,13 +21,13 @@ extension Array: JavaValue where Element: JavaValue {
   public static var javaType: JavaType { .array(Element.javaType) }
 
   public init(fromJNI value: JNIType, in environment: JNIEnvironment) {
-    let jniCount = environment.interface.GetArrayLength(environment, value)
-    let count = Int(jniCount)
-
     guard let value else {
       self = []
       return
     }
+
+    let jniCount = environment.interface.GetArrayLength(environment, value)
+    let count = Int(jniCount)
 
     // Fast path for byte types: Since the memory layout of `jbyte` (Int8) and UInt8/Int8 is identical,
     // we can rebind the memory and fill it directly without creating an intermediate array.
