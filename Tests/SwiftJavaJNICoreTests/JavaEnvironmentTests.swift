@@ -183,6 +183,25 @@ struct JavaEnvironmentTests {
   }
 
   @Test(.enabled(if: isSupportedPlatform))
+  func fromJNI_nestedArrayWithNullInnerElement() throws {
+    let env = try JavaVirtualMachine.shared().environment()
+
+    let makeOuter = [[UInt8]].jniNewArray(in: env)
+    let outer = makeOuter(env, 3)
+
+    let inner0 = [UInt8(1)].getJNIValue(in: env)
+    let inner1nil: jobject? = nil // oh no!
+    let inner2 = [UInt8(2), UInt8(3)].getJNIValue(in: env)
+
+    env.interface.SetObjectArrayElement(env, outer, 0, inner0)
+    env.interface.SetObjectArrayElement(env, outer, 1, inner1nil)
+    env.interface.SetObjectArrayElement(env, outer, 2, inner2)
+
+    let result = [[UInt8]](fromJNI: outer, in: env) // avoid NPE on the inner1nil, just count as 0 length
+    #expect(result == [[0x01], [], [0x02, 0x03]])
+  }
+
+  @Test(.enabled(if: isSupportedPlatform))
   func getJNIValue_nestedInt32Array() throws {
     let env = try JavaVirtualMachine.shared().environment()
 
