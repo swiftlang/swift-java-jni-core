@@ -45,7 +45,7 @@ extension Array: JavaValue where Element: JavaValue {
         }
         initializedCount = count
       }
-      self = result as! Self
+      self = unsafeBitCast(result, to: Self.self)
     } else if Element.self == Int8.self {
       let result = [Int8](unsafeUninitializedCapacity: Int(jniCount)) { buffer, initializedCount in
         Int8.jniGetArrayRegion(in: environment)(
@@ -57,7 +57,7 @@ extension Array: JavaValue where Element: JavaValue {
         )
         initializedCount = count
       }
-      self = result as! Self
+      self = unsafeBitCast(result, to: Self.self)
     } else {
       // Slow path for other types: create intermediate array and map
       let jniArray = [Element.JNIType](unsafeUninitializedCapacity: count) { buffer, initializedCount in
