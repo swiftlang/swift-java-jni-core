@@ -93,7 +93,7 @@ jobs:
     container:
       image: ${{ (contains(matrix.swift_version, 'nightly') && 'swiftlang/swift') || 'swift' }}:${{ matrix.swift_version }}-${{ matrix.os_version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare CI Environment
         uses: ./.github/actions/prepare_env
       - name: Swift Build
@@ -107,7 +107,7 @@ jobs:
     container:
       image: swift:6.2-jammy
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare CI Environment
         uses: ./.github/actions/prepare_env
       - name: Run linkage test
