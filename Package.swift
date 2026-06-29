@@ -7,6 +7,7 @@ let package = Package(
   products: [
     .library(
       name: "SwiftJavaJNICore",
+      type: .dynamic,
       targets: ["SwiftJavaJNICore"]
     )
   ],
