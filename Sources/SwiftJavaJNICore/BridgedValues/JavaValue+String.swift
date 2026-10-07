@@ -29,13 +29,28 @@ extension String: JavaValue {
     }
     let cString = environment.interface.GetStringUTFChars(environment, value, nil)!
     defer { environment.interface.ReleaseStringUTFChars(environment, value, cString) }
-    self = String(cString: cString) // copy
+    if let string = String(validatingCString: cString) {
+      self = string
+      return
+    }
+    // GetStringUTFChars returns "modified UTF-8", which encodes NUL as 0xC0 0x80 and, on
+    // HotSpot, characters outside the BMP as surrogate pairs; neither is valid UTF-8.
+    let length = environment.interface.GetStringLength(environment, value)
+    self = withUnsafeTemporaryAllocation(of: UInt16.self, capacity: Int(length)) { buffer in
+      environment.interface.GetStringRegion(environment, value, 0, length, buffer.baseAddress)
+      return String(decoding: buffer, as: UTF16.self)
+    }
   }
 
   public func getJNIValue(in environment: JNIEnvironment) -> JNIType {
-    // FIXME: this works, but isn't great. Swift uses UTF8 and Java uses UTF8 with
-    // some encoding quirks for non-ascii. So round-tripping via UTF16 is unfortunate,
-    // but correct, so good enough for now.
+    // NewStringUTF takes "modified UTF-8", which matches UTF-8 unless the string has a NUL
+    // or a character outside the BMP (a 4-byte sequence); those go through UTF-16 instead.
+    let isModifiedUTF8 = utf8.withContiguousStorageIfAvailable { bytes in
+      !bytes.contains { $0 == 0 || $0 >= 0xF0 }
+    }
+    if isModifiedUTF8 == true {
+      return withCString { environment.interface.NewStringUTF(environment, $0) }
+    }
     var utfBuffer = Array(utf16)
     return environment.interface.NewString(environment, &utfBuffer, Int32(utfBuffer.count))
   }
