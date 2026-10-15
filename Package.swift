@@ -23,6 +23,12 @@ let package = Package(
     ),
 
     .testTarget(
+      name: "SwiftJavaJNICoreCxxTests",
+      dependencies: ["SwiftJavaJNICore"],
+      swiftSettings: [.interoperabilityMode(.Cxx)]
+    ),
+
+    .testTarget(
       name: "SwiftJavaJNICoreTests",
       dependencies: [
         "SwiftJavaJNICore"
