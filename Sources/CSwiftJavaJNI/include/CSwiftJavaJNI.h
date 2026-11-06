@@ -508,3 +508,17 @@ __attribute__ ((visibility ("default"))) void JNI_OnUnload(JavaVM* vm, void* res
 #define JNI_ABORT       2
 
 #endif
+
+// ---------------------------------------------------------------------------
+// Pointer-sized atomics used by SwiftJavaJNICore (internal; not JNI API).
+// Kept in C so the lock-free path works on every platform without requiring
+// the Synchronization module's availability (macOS 15+).
+// ---------------------------------------------------------------------------
+
+static inline void *_Nullable _swiftjava_atomic_load_ptr(void *_Nullable const *_Nonnull cell) {
+  return __atomic_load_n(cell, __ATOMIC_ACQUIRE);
+}
+
+static inline void *_Nullable _swiftjava_atomic_exchange_ptr(void *_Nullable *_Nonnull cell, void *_Nullable value) {
+  return __atomic_exchange_n(cell, value, __ATOMIC_ACQ_REL);
+}

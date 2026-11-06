@@ -48,7 +48,7 @@ public final class JavaVirtualMachine: @unchecked Sendable {
 
   /// Thread-local storage to detach from thread on exit
   private static let destroyTLS = ThreadLocalStorage { _ in
-    try? JavaVirtualMachine.shared().detachCurrentThread()
+    try? JavaVirtualMachine.current?.detachCurrentThread()
   }
 
   /// The Java virtual machine instance.
@@ -222,6 +222,14 @@ extension JavaVirtualMachine {
 // ==== ------------------------------------------------------------------------
 // MARK: Shared Java Virtual Machine management.
 
+/// Cell holding the published shared JVM as a +1 retained pointer: written under
+/// `JavaVirtualMachine.sharedJVM`'s lock, read lock-free by `JavaVirtualMachine.current`.
+nonisolated(unsafe) private let publishedJVM: UnsafeMutablePointer<UnsafeMutableRawPointer?> = {
+  let cell = UnsafeMutablePointer<UnsafeMutableRawPointer?>.allocate(capacity: 1)
+  cell.initialize(to: nil)
+  return cell
+}()
+
 extension JavaVirtualMachine {
   /// The globally shared JavaVirtualMachine instance, behind a lock.
   ///
@@ -230,12 +238,42 @@ extension JavaVirtualMachine {
   /// simple.
   static let sharedJVM: LockedState<JavaVirtualMachine?> = .init(initialState: nil)
 
+  /// The shared Java Virtual Machine, if one has been set or adopted.
+  ///
+  /// Unlike ``shared(classpath:vmOptions:ignoreUnrecognized:replace:)``, this never
+  /// looks for or creates a JVM, and it reads without taking a lock, so it is
+  /// suitable for hot paths (every JNI call made through a higher-level library)
+  /// and for checking whether a JVM is available at all.
+  public static var current: JavaVirtualMachine? {
+    guard let raw = _swiftjava_atomic_load_ptr(publishedJVM) else {
+      return nil
+    }
+    return Unmanaged<JavaVirtualMachine>.fromOpaque(raw).takeUnretainedValue()
+  }
+
+  /// Store `javaVM` as the shared instance. Must be called with `sharedJVM` locked.
+  ///
+  /// The published pointer holds its own retain. Replacing or forgetting the
+  /// shared instance releases the previous one, so callers must not replace the
+  /// JVM while other threads are still using the old instance (the same
+  /// requirement `destroyJVM()` already has).
+  private static func publish(_ javaVM: JavaVirtualMachine?, into state: inout JavaVirtualMachine?) {
+    if state === javaVM {
+      return
+    }
+    state = javaVM
+    let new = javaVM.map { Unmanaged.passRetained($0).toOpaque() }
+    if let old = _swiftjava_atomic_exchange_ptr(publishedJVM, new) {
+      Unmanaged<JavaVirtualMachine>.fromOpaque(old).release()
+    }
+  }
+
   /// Set the shared Java Virtual Machine instance.
   ///
   /// This is used by higher-level modules (e.g. SwiftJava) to register
   /// a JVM that was created or adopted externally.
   public static func setSharedJVM(_ jvm: JavaVirtualMachine) {
-    sharedJVM.withLock { $0 = jvm }
+    sharedJVM.withLock { publish(jvm, into: &$0) }
   }
 
   /// Access the shared Java Virtual Machine instance.
@@ -266,12 +304,17 @@ extension JavaVirtualMachine {
       "Classpath element must not contain `\(FileManager.pathSeparator)`! Split the path into elements! Was: \(classpath)"
     )
 
+    // Fast path: an existing instance is returned as-is (options are not re-applied, as below).
+    if !replace, let existing = current {
+      return existing
+    }
+
     return try sharedJVM.withLock { (sharedJVMPointer: inout JavaVirtualMachine?) throws(VMError) in
       // If we already have a JavaVirtualMachine instance, return it.
       if replace {
         print("[swift-java] Replace JVM instance!")
         try sharedJVMPointer?.destroyJVM()
-        sharedJVMPointer = nil
+        publish(nil, into: &sharedJVMPointer)
       } else {
         if let existingInstance = sharedJVMPointer {
           // FIXME: this isn't ideal; we silently ignored that we may have requested a different classpath or options
@@ -295,7 +338,7 @@ extension JavaVirtualMachine {
             // Adopt this JVM into a new instance of the JavaVirtualMachine
             // wrapper.
             let javaVirtualMachine = JavaVirtualMachine(adoptingJVM: jvm!)
-            sharedJVMPointer = javaVirtualMachine
+            publish(javaVirtualMachine, into: &sharedJVMPointer)
             return javaVirtualMachine
           }
 
@@ -324,7 +367,7 @@ extension JavaVirtualMachine {
             fatalError("Unexpected non-VMError from JavaVirtualMachine.init: \(error)")
           }
 
-          sharedJVMPointer = javaVirtualMachine
+          publish(javaVirtualMachine, into: &sharedJVMPointer)
           return javaVirtualMachine
         }
       }
@@ -336,7 +379,7 @@ extension JavaVirtualMachine {
   /// This will allow the shared JavaVirtualMachine instance to be deallocated.
   public static func forgetShared() {
     sharedJVM.withLock { sharedJVMPointer in
-      sharedJVMPointer = nil
+      publish(nil, into: &sharedJVMPointer)
     }
   }
 
@@ -345,7 +388,7 @@ extension JavaVirtualMachine {
   /// This is used by `JNI_OnLoad` to register the JVM instance
   /// when loaded as a dynamic library by Java.
   public static func setShared(_ javaVM: JavaVirtualMachine) {
-    sharedJVM.withLock { $0 = javaVM }
+    sharedJVM.withLock { publish(javaVM, into: &$0) }
   }
 }
 
