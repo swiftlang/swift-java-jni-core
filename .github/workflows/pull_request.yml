@@ -57,6 +57,9 @@ jobs:
       macos_pre_build_command: brew install openjdk
       enable_ios_checks: false
       enable_linux_checks: true
+      # Swift Build does not yet propagate C++ interoperability to generated test runners.
+      # Keep the runtime in C mode while the C++ consumer tests use their own setting.
+      linux_build_command: swift test --build-system native
       linux_os_versions: '["amazonlinux2", "bookworm", "noble", "jammy", "rhel-ubi9"]'
       linux_exclude_swift_versions: "[{\"swift_version\": \"5.9\"}, {\"swift_version\": \"5.10\"}]"
       linux_pre_build_command: |
